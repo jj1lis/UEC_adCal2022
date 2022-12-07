@@ -1,0 +1,606 @@
+\documentclass[uplatex,a4paper,dvipdfmx]{jsarticle}
+\usepackage{amsmath,amsfonts,amssymb,amsthm,bm}
+\usepackage{ascmac}
+\usepackage{physics}
+\usepackage[top=15truemm,bottom=20truemm,left=15truemm,right=15truemm]{geometry}
+\usepackage{tikz}
+\usepackage{gnuplot-lua-tikz}
+\usetikzlibrary{intersections,calc,arrows.meta,cd,automata,positioning}
+\usepackage{circuitikz}
+\usepackage{here}
+\usepackage{siunitx}
+\usepackage{multicol,multirow}
+\usepackage{systeme}
+\usepackage[version=3]{mhchem}
+\usepackage{chemfig}
+\usepackage{url}
+\usepackage{braket}
+\usepackage{enumerate}
+\usepackage{mathrsfs}
+\usepackage{otf}
+\usepackage{ulem}
+\usepackage{stmaryrd}
+\renewcommand{\labelenumi}{(\arabic{enumi})}
+\DeclareMathOperator{\Sinarc}{\mathrm{Sin}^{-1}}
+\DeclareMathOperator{\Cosarc}{\mathrm{Cos}^{-1}}
+\DeclareMathOperator{\Tanarc}{\mathrm{Tan}^{-1}}
+\DeclareMathOperator{\Real}{\mathbb{R}}
+\DeclareMathOperator{\Complex}{\mathbb{C}}
+\DeclareMathOperator{\Rational}{\mathbb{Q}}
+\DeclareMathOperator{\Natural}{\mathbb{N}}
+\DeclareMathOperator{\Integer}{\mathbb{Z}}
+\DeclareMathOperator{\Ker}{\mathrm{Ker}}
+\DeclareMathOperator{\true}{\mathrm{true}}
+\DeclareMathOperator{\false}{\mathrm{false}}
+\DeclareMathOperator{\diffset}{\backslash}
+\DeclareMathOperator{\define}{\overset{\text{def}}{\Longleftrightarrow}}
+\newcommand{\semvalue}[1]{\llbracket {#1} \rrbracket}
+
+\theoremstyle{definition}
+\newtheorem{dfn}{定義}
+\newtheorem*{dfnex}{定義（例）}
+\newtheorem{axiom}{公理}
+\newtheorem{thm}{定理}
+\newtheorem{coro}{系}
+\newtheorem*{thmex}{定理（例）}
+\newtheorem{lem}{補題}
+\newtheorem{example}{例}
+\newtheorem{question}{問}
+
+\title{超速習数理論理学\quad 一階命題論理の意味論}
+\author{型推栄 (@\_jj1lis\_uec)}
+\date{2022/12/08}
+
+\begin{document}
+    \maketitle
+
+    \section{はじめに}
+    \subsection{噴水の証明}
+    早速だが，次の問題について少し考えてみよう．
+    \begin{question}\label{q:fountain}
+        以下より，今日が調布祭の開催日であることを示せ．
+        \begin{enumerate}
+            \item 電通大本館前の噴水が稼働するのは，オープンキャンパスか調布祭（学園祭）の開催日である．
+            \item オープンキャンパスの開催日には構内に高校生がいる．
+            \item 今日は構内に高校生がおらず，噴水は稼働している．
+        \end{enumerate}
+    \end{question}
+    さて，この証明はどのような手順で行えばよいか．
+
+    \begin{proof} 次のようにいくつかのステップに分けて考えよう．
+        \begin{enumerate}
+            \item 噴水が稼働しているから，今日はオープンキャンパスか調布祭の開催日である．
+            \item オープンキャンパスの日には高校生がいる．対偶より，高校生がいなければオープンキャンパスの開催日ではない．
+            \item (2) より，今日は高校生がいないのでオープンキャンパスの開催日ではない．
+            \item (1), (3) より，今日は調布祭の開催日である．
+        \end{enumerate}
+    \end{proof}
+
+    \subsection{数理論理学とは}
+        「噴水の証明」は一見正しいように思えるし，実際普段扱うレイヤーの議論ではこの程度で十分だろう．しかしもう少し疑り深い人や天邪鬼は「ほんまか？」とケチをつける．
+        つまり，一般的に行われる数学的証明が実際のところどの程度正しいのか（あるいは，そもそも『正しい証明』とは何か）を考えたいというのが，数理論理学のモチベーションの一つである．
+
+        数理論理学は数学的証明の正しさを議論する点で数学の根幹であり数学基礎論とも呼ばれるが，同時に周辺分野に対しても重要な概念を提供する．
+        例えば情報工学においては論理設計のツールとして使われる．ド・モルガン則を用いて if 文のネストを浅くできるのだって，極端に言えば数理論理学の成果を応用した結果である．
+        また言語学（特に理論言語学）では自然言語を数理的に分析するために重宝され，チョムスキーに代表される生成文法はその主たる例であろう．
+
+        数理論理学で議論される個々の論理体系では，種々の言明を\textbf{論理式}で表すために形式言語を用いる．これをオブジェクト言語と呼ぶ．また，その理論の領域は大きく分けて次の3つに分類される．
+
+        \begin{itemize}
+            \item 統語論
+            \item 意味論
+            \item 証明論
+        \end{itemize}
+
+        統語論とは，オブジェクト言語自体を定める理論である．何が論理式であって何が論理式でないかを定義するものとも言える．
+        しかし統語論だけでは論理式は単なる記号の羅列であって，実際に命題を記述したり証明に用いるには到底足りない．論理が意味を持つには，意味論あるいは証明論が必要である．
+
+        意味論とは，統語論で定めた論理式について何が真で何が偽かを定義するような理論である．論理式の真偽はその構造やパラメータとなる命題，名前等によって定まるが，これを領域と呼ばれる議論対象の集合上での領域によって表現する．
+        一方の証明論は意味論と対比される概念で，公理と推論規則によって論理式に真偽を意味づけする理論である．
+
+        本稿における目標は古典的一階命題論理を意味論を構成してみる過程でまずは数理論理学に親しんでみること，そして普段何気なく行っている推論と証明について考えることである．
+
+        \subsubsection{オブジェクト言語とメタ言語}
+            オブジェクト言語をオブジェクト言語自身で記述することはできない．それを行うのは，我々の解する自然言語である．これをメタ言語と呼ぶ．
+            論理について考えるうち，この二つのレイヤーの区別がつかず混乱してしまうことがあるから注意したい．いくつかその例を考えよう．
+
+            \begin{example}
+                $X$ かつ $Y$ である．
+            \end{example}
+            $X$ や $Y$ は何かしらの言明や命題が入るプレースホルダーである．
+            「かつ」というのは連言を表す言葉で， $X$ も $Y$ も両方成り立つという意味である．だがこれから考える一階命題論理には $\land$ という論理結合子が登場し，これによれば  $X$ かつ $Y$ は $X \land Y$ で表される．
+            したがって，$\land$ の定義なしに「かつ」という言葉を使ってはいけないように思える．
+
+            だがそのようなことを心配する必要はない．というのは，上の例で使っている「かつ」とはメタ言語（日本語）でその意味を規定しており，我々人間がオブジェクト言語に登場する概念とは全く独立に理解できるからである．
+
+            \begin{example}
+                $X \Longleftrightarrow Y$
+            \end{example}
+            直後に見るように， $\Leftrightarrow$（$\Rightarrow$ かつ $\Leftarrow$）は推論という考え方を規定する際に登場する記号である．
+            しかし今後は一階命題論理のほか，メタ言語のレイヤーで $X$ と $Y$ が同値であることのエイリアスとして用いる．すなわち $X$ が成り立つなら $Y$ が成り立つし，その逆も然りである．
+            本来なら「$X$ と $Y$ は同値である」と書いたほうがよいのだが，表現の簡便さを優先してこの方式を取ることもある．
+
+            読者にはそういった区別に気をつけながら読み進めていただきたい．
+
+    \subsection{推論} \label{inference}
+        証明にはいろいろなものがあるが，共通するのは有限個の\textbf{前提}からある一つの\textbf{結論}を導き出すという構造である．すなわち全ての証明は，記号 $\Rightarrow$ を用いて次のような形式で表すことができる．
+
+        \begin{equation}
+            \varphi_1, \ldots, \varphi_n \Longrightarrow \psi
+        \end{equation}
+
+        上では$n$個の前提$\varphi_i$より結論$\psi$を導き出している．この形式を\textbf{推論}という．
+        ある推論が正しい（\textbf{妥当}）か否かを形式的に定義することは現時点では不可能である．しかしそれを待たずしても，数学をある程度学んだ者であれば概ね同じ判断ができるだろう
+        \footnote{これは我々人間が生来持つ\textbf{理性}によるはたらきだ，という主張が西洋においては長らくされていた．
+        しかし冷静に考えれば，理性の存在は元々の疑問を何も解決してはくれない．これを解消しようというのも数理論理学のモチベーションの一つである．}．
+
+        \begin{example}
+            ここで命題$A, B$からなる二つの推論 (a), (b) について考えよう．ただし，含意の論理結合子$\to$（後述）と推論$\Rightarrow$は別物であるから注意せよ．
+            \begin{align}
+                A,\ A \to B\ &\Longrightarrow  B \tag{a} \\
+                A,\ B \to A\ &\Longrightarrow  B \tag{b}
+            \end{align}
+
+            それぞれ自然言語で表すなら次の通り．
+
+            \begin{enumerate}[(a)]
+                \item \begin{enumerate}[1.]
+                        \item $A$である．
+                        \item $A$ならば$B$である．
+                        \item よって$B$である．
+                    \end{enumerate}
+                \item \begin{enumerate}[1.]
+                        \item $A$である．
+                        \item $B$ならば$A$である．
+                        \item よって$B$である．
+                    \end{enumerate}
+            \end{enumerate}
+            推論 (a), (b) は似たような論理構造をしていて，前提1, 2から結論3を導いている．にもかかわらず，多くの読者には (a) が妥当であり，(b) が妥当でないことは明らかに思われるはずだ
+            \footnote{(b) は後件肯定という有名な\textbf{誤謬}である．}．
+        \end{example}
+            また，証明は必ずしも一つの推論から構成されるとは限らない．
+
+        \begin{example}\label{ex:abc}
+            $A,\ A \to B,\ B \to C \Longrightarrow B$を証明しようとすると，次の手順が必要になる．
+            \begin{enumerate}
+                \item $A,\ A \to B \Longrightarrow B$は妥当．
+                \item $B,\ B \to C \Longrightarrow C$は妥当．
+                \item よって$A,\ A \to B,\ B \to C \Longrightarrow C$は妥当．
+            \end{enumerate}
+            ここでは (1), (2) それぞれで推論が行われ，その後二つを組み合わせて最後に推論が行われている．
+        \end{example}
+
+        例\ref{ex:abc}から分かるのは，ある証明が妥当であるためには次の要件を満たす必要があるということである（ように思える）．
+
+        \begin{itemize}
+            \item 妥当な推論のみから成り立っている
+            \item 推論同士が妥当に組み合わされている
+        \end{itemize}
+
+        妥当な推論と妥当でない推論をどのように区別するか，またどのような推論同士の組み合わせ方が妥当であるか．これを定めるのも意味論や証明論の役割である．
+
+        %\subsection{集合と写像}
+            %TODO
+
+    \section{一階命題論理の統語論}
+        では実際に，一階命題論理を構成してみよう．
+
+        \textbf{原子命題}とはそれ以上分割できない命題のことである．例えば「ポチは犬だ」と「太郎は日本人だ」は違う命題で，かつこれ以上分割することができない
+        \footnote{これ以上分割することができないとは言ったものの，「ポチは犬だ」が「ポチ」という主語と「犬だ」という述語に分けられることは，読者が小学校の国語科で習った通りである．
+        しかしこうした概念は一階述語論理で表現され，少なくとも一階命題論理においては「ポチは犬だ」と「シロは犬だ」は別物である．}．
+        しかしどちらも取りうる状態としては真か偽かの二択で，「ポチが犬ならば四足歩行する」も「太郎が日本人ならば寿司を食べる」も構造としては同じく $A \to B$ のような形で表すことができる．
+        とりあえずのところ原子命題の具体的な内容まで踏み込むようなことはせず，\textbf{命題記号}で置き換えてしまったほうが議論は簡単になる．
+
+        \begin{dfn}
+            一階命題論理には以下の記号を用いる．
+            \begin{description}
+                \item[命題記号 : ] $A, B, C,\ldots$
+                \item[論理結合子 : ] \leavevmode
+                    \begin{description}
+                        \item[0項論理結合子 : ] $\true,\ \false$
+                        \item[1項論理結合子 : ] $\lnot$
+                        \item[2項論理結合子 : ] $\to,\ \land,\ \lor,\ \leftrightarrow$
+                    \end{description}
+            \end{description}
+        \end{dfn}
+
+        各論理結合子の意味については，取り敢えずのところ一般的な定義の通りと思ってもらえればよい．
+        例えば $\lnot \varphi$ は「$\varphi$ でない」という否定を， $\varphi \leftrightarrow \psi$ は「$\varphi$ のとき，かつそのときに限り $\psi$」という同値
+        \footnote{$\varphi$ iff $\psi$ とも．iff は ``if and only if'' の略．}を表す．
+
+        \begin{dfn}\label{dfn:formula}
+            一階命題論理の論理式とは以下のいずれかに合致するものであり，それ以外は論理式でない．
+            \begin{enumerate}
+                \item 命題記号
+                \item $n$項論理結合子$f$と論理式$\varphi_1, \ldots \varphi_n$の$n$個順序対
+                    $(\varphi_1, \ldots, \varphi_n)$による\textbf{複合論理式}$f(\varphi_1, \ldots \varphi_n)$
+            \end{enumerate}
+        \end{dfn}
+
+        また，ここで論理式に関する同値関係を次の通り定義する．
+        \begin{dfn}\label{dfn:syntactical}
+            論理式$\varphi, \psi$が\textbf{構文的に同値}であるとは，$\varphi$と$\psi$が同じものを指すことをいい，$\varphi \equiv \psi$と書く．
+        \end{dfn}
+
+        「同じものを指す」とは，それらを入れ替えた場合ても全く影響を与えないことをいう．すなわち$\varphi \equiv \psi$ならば以後の議論に現れる$\varphi$を全て$\psi$と読み替えても問題ないし，$f(\varphi) \equiv f(\psi)$でもある．
+        \begin{example}
+            定義\ref{dfn:formula}を厳密に適用するならば$\varphi$の否定は$\lnot(\varphi)$，$\varphi$と$\psi$の連言は$\land(\varphi, \psi)$と書かねばならない．
+            しかし一般的には$\lnot \varphi$や$\varphi \land \psi$（中置記法）のように書いたほうがわかりやすいし，この違いが議論に本質的な影響を与えるとは思えない．
+
+             そこでこれらは構文的に同値であるとして，$\lnot(\varphi) \equiv \lnot\varphi,\ \land(\varphi, \psi) \equiv \varphi \land \psi$ のように定める．その他の論理結合子についても同様である．
+        \end{example}
+        \begin{dfn}
+            $\true(), \false()$ をそれぞれ $\top, \bot$ の記号でも表す．すなわち，
+            \begin{gather*}
+                \top \equiv \true(),\quad \bot \equiv \false()
+            \end{gather*}
+        \end{dfn}
+
+    \section{一階命題論理の意味論}
+        先に述べた通り統語論だけでは論理は単なる形式言語であって，現実世界の諸問題を記述し，有益な議論をするための道具たり得ない．
+        意味論においてその価値を与えるのは，論理式をどのように\textbf{解釈}するかである．
+
+        \subsection{領域}
+            \textbf{領域}とはある論理における論理式の解釈先のことをいう．一階命題論理において，論理式真か偽かという二択の形で解釈される．
+            すなわち一階命題論理の領域，この真偽を表す値（\textbf{真理値}）の集合である．ここでは真理値を0と1とする．
+            \begin{dfn}
+                一階命題論理の領域は，真理値の集合$B \equiv \qty{0, 1}$である．
+            \end{dfn}
+
+            以後の議論では0が偽を，1が真を表すものとして考える．
+            しかし形式的にはあくまである論理式$\varphi$が0へ対応づけられるか1へ対応づけられるかの違いであり，例え本稿に真理値として登場する0と1を全て入れ替えても何ら問題は生じない．
+            0や1が「意味」する真偽については論理より上のレイヤーで判断されることに注意せよ．
+
+        \subsection{解釈}
+            今まで「解釈」という言葉の意味をぼやかして使ってきたが，一階命題論理の意味論においてその正体は写像である．
+            \begin{dfn}
+                論理式全体を$F$，$n$項論理結合子全体を$C_n$とする．一階命題論理の解釈とは，次に示す写像$I_F,\ I_{Cn}$の和である．ただし集合$A \to B$とは，$A$から$B$への写像全体を指すものとする．%直積$A \times B$の部分集合のうち，写像の公理（全域性と一価性）を満たすもの全体を指すとする．
+                \begin{equation}
+                \begin{aligned}
+                    I_F&: F \to B \\
+                    I_{Cn}&: C_n \to (B^n \to B)
+                \end{aligned}
+                \end{equation}
+                また，$n$項論理結合子$f$を解釈して得た写像$I_{Cn}(f):B^n \to B$を$n$項真理関数と呼ぶ．
+            \end{dfn}
+            すなわち，集合としての解釈$I$は$\displaystyle I = I_F \cup \bigcup_{n \in \Natural} I_{Cn}$と表される．
+            %$A, B$に対する写像$f:A \to B$は，直積$A \times B$の部分集合のうち，写像の公理として全域性と一価性を満たすものであった（詳細は他書に譲る）．
+            $I_F$と$I_{Cn}$の定義域$F, \bigcup_{n}C_n$は互いに排反であるから，その和集合である$I:(F \cup \bigcup_{n}C_n) \to B$も全域性と一価性をそれぞれ受け継いで写像の公理を満たす．%述語論理風に書くなら次を満たすことによる．
+            以下で$n$が明らかなとき，$C_n$を$C$，$I_{Cn}$を$I_C$とも書く．
+            %\begin{equation*}
+            %    \forall m, n \in \Natural,\forall (B^n \to B) \in B^n \times B: F \cap C_n = C_m \cap C_n =  B \cap (B^n \to B) = \emptyset
+            %\end{equation*}
+            \begin{dfn}
+                論理式$\varphi$の解釈$I$における\textbf{意味論的値} $\semvalue{\varphi}_I$とは，解釈$I$によって $\varphi$ が写される領域上の値のことである．
+                $\semvalue{\varphi}_I$は$\varphi$によって次の通り再帰的に定義される．ただし以下で$P$は命題記号，$f$は$n$項論理結合子，$\varphi_1, \dots, \varphi_n$は論理式とする．
+                \begin{description}
+                    \item[$\varphi \equiv P$の場合 : ] $\semvalue{\varphi}_I = I_F(P)$
+                    \item[$\varphi \equiv f(\varphi_1, \dots \varphi_n)$ の場合 : ] $\semvalue{\varphi}_I = I_{Cn}(f) (\semvalue{\varphi_1}_I, \dots, \semvalue{\varphi_n}_I)$
+                \end{description}
+            \end{dfn}
+
+            ここで一般に$I_F(P)$の値は解釈により異なるが，$I_{Cn}(f)$によって得られる$B^n \to B$の関数は解釈によらず一定であることに注意せよ．
+            例えば1項論理結合子$\lnot$や2項論理結合子$\land, \to$は，解釈によらず次のような1項真理関数と2項真理関数にそれぞれ写される．
+            \begin{gather*}
+                I_{C}(\lnot) = \mqty[(0) \mapsto 1 \\
+                                      (1) \mapsto 0] \quad \quad 
+                I_{C}(\land) = \mqty[(0, 0) \mapsto 0 \\
+                                    (0, 1) \mapsto 0 \\
+                                    (1, 0) \mapsto 0 \\
+                                    (1, 1) \mapsto 1] \quad \quad
+                I_{C}(\to) = \mqty[(0, 0) \mapsto 1 \\
+                                    (0, 1) \mapsto 1 \\
+                                    (1, 0) \mapsto 0 \\
+                                    (1, 1) \mapsto 1]
+            \end{gather*}
+
+            \begin{question}
+                0項論理結合子$\true, \false$，2項論理結合子$\lor, \leftrightarrow$についてもその真理関数を書け．
+            \end{question}
+
+            \begin{example}
+                「太郎が働いていて，かつ学生でないなら，太郎は正社員である」という命題 $\varphi$ を例として，意味論的値が具体的に何を表しているのか考える\footnote{この命題が社会的実情に照らして妥当かどうかは棚上げしておく．}．
+                各原子命題について「太郎は働いている」を$P$，「太郎は学生である」を$Q$，「太郎は正社員である」を$R$という命題記号で置くと，$\varphi$は次のように書くことができる．
+                \begin{align*}
+                    \varphi &\equiv P \land \lnot Q \to R \\
+                        &\equiv \to(\land(P, \lnot(Q)), R)
+                \end{align*}
+                1行目では一般的な中置記法を用いているのを，2行目ではあえて本来の形に変形した．
+
+                解釈$I$のうち$I_F: F \to B$は論理式を真理値へ写す．定義2 (1) で見た通り命題記号は論理式であるから，やはり0か1のどちらかに対応される．
+                すなわち解釈を一つ選ぶことは，各原子命題の真偽を一つに固定する（＝ある状況や文脈，場合を選ぶ）ことでもある
+                \footnote{『ひぐらしのなく頃に』を知っている読者には，カケラといえばよい例えになるかもしれない．}．
+
+                例えば今ある解釈$I$が「太郎は働いていて，学生でなくて，正社員ではない」という状況を表すとすると，これはすなわち命題記号$P, Q, R$が$P \mapsto 1, Q \mapsto 0, R \mapsto 0$に写されることに等しい．
+                定義7を再帰的に適用すれば，$\varphi$の$I$における意味論的値は次のように求められる．
+                \begin{align*}
+                    \semvalue{\varphi}_I &= I_{C}(\to) (\semvalue{\land(P, \lnot(Q))}_I, \semvalue{R}_I) \\
+                        &= I_{C}(\to) (I_{C}(\land)(\semvalue{P}_I, \semvalue{\lnot(Q)}_I), I_F(R)) \\
+                        &= I_{C}(\to) (I_{C}(\land)(I_F(P), I_{C}(\lnot)(I_F(Q))), I_F(R)) \\
+                        &= I_{C}(\to) (I_{C}(\land)(1, I_{C}(\lnot)(0)), 0) \\
+                        &= I_{C}(\to) (I_{C}(\land)(1, 1), 0) \\
+                        &= I_{C}(\to) (1, 0) \\
+                        &= 0
+                \end{align*}
+
+                さて，ところで「太郎は働いていて，学生でなくて，正社員ではない」という状況が$\varphi$を偽にすることは感覚的に理解できるであろう．
+                「太郎は働いていて，学生でなくて，正社員である」は$\varphi$を真にするが，これを解釈$J$とすれば$\semvalue{\varphi}_J = 1$も上と同様に求められる．
+                すなわち意味論的値はある命題の，ある解釈のもとでの真偽を表していると考えてよさそうである．
+            \end{example}
+
+            \begin{dfn}
+                ある解釈$I$に対して論理式$\varphi$が$\semvalue{\varphi}_I = 1$を満たすとき，$I$は$\varphi$を\textbf{充足する}という．
+            \end{dfn}
+
+        \subsection{意味論的含意}
+            意味論的含意は，後に意味論の立場から推論や証明を論ずる上で非常に重要な概念である．ところで推論は$\varphi_1, \ldots, \varphi_n \Longrightarrow \psi$のような形式であるが，この前提のように
+            複数の論理式を列として操作する必要がある．
+            \begin{dfn}\label{dfn:sequence}
+                論理式列とは，0個以上で有限個の論理式を含む列である．論理式列$\Phi \equiv \varphi_1, \ldots ,\varphi_n$に対して，次のように用語を定義する．
+                \begin{enumerate}
+                    \item $\Phi$に含まれる論理式の数を$|\Phi|$で表す．すなわち$|\Phi| = n$．
+                    \item $\Phi$の否定$\lnot \Phi$は，含まれる各論理式の否定を取り順序を逆にした論理式列である．すなわち$\lnot \Phi \equiv \lnot\varphi_n, \ldots, \lnot\varphi_1$．
+                    \item ある解釈$I$が$\varphi_1, \ldots, \varphi_n$をすべて充足するとき，$I$は$\Phi$を同時に充足するという．
+                    \item $\Phi$を同時に充足する解釈が存在するとき，$\Phi$は充足可能であるという．
+                \end{enumerate}
+            \end{dfn}
+            \begin{dfn}\label{dfn:semanticv}
+                論理式列 $\Phi, \Psi$（ただし$|\Psi| \le 1$）について，以下の条件 (1), (2) を同時に満たす解釈$I$が存在\underline{しない}とする．
+                \begin{enumerate}
+                    \item $\Phi$ に含まれる全ての論理式$\varphi$について，$\semvalue{\varphi}_I = 1$
+                    \item $\Psi$ に含まれる全ての論理式$\psi$について，$\semvalue{\psi}_I = 0$
+                \end{enumerate}
+                このとき$\Phi$が$\Psi$を \textbf{意味論的に含意する}といい，$\Phi \vDash \Psi$で表す．
+            \end{dfn}
+
+            定義\ref{dfn:semanticv}が言わんとすることを一言で表すなら，「$\Phi \vDash \Psi \Longleftrightarrow \Phi$が全て真なら$\Psi$も真」ということになる．論理結合子 $\to$ は含意とも呼ぶが，なるほど相似を見て取れる．
+
+            \begin{example}
+                $a, b \in \Real$について原子命題「$a > 0$」を$P$，「$b > 0$」を$Q$，「$ab > 0$」を$Q$とすれば，$a = 5, b = 1$なる解釈$I$を考えれば$\semvalue{P}_I = 1, \semvalue{Q}_I = 1, \semvalue{R}_I = 1$となる．
+                注意深く眺めれば（あるいは真理値表を作成すれば），$a, b$が具体的にどのような値かにかかわらず$\semvalue{P}_I = 1, \semvalue{Q}_I = 1$となる解釈$I$の元では必ず$\semvalue{R}_I = 1$となることが分かる．
+                すなわち定義\ref{dfn:sequence}より$P, Q \vDash R$である．
+
+                今度は$P$を「$a \ge 0$」と書き換える．するとほとんどの部分で先と変わらないが，$P, Q$の意味論的値が1であるにもかかわらず$R$の意味論的値が0になる解釈が存在する（例：$a = 0, b = 1$など）．
+                よって$P, Q \not\vDash R$である．
+            \end{example}
+
+            \subsubsection{恒真と矛盾}
+                定義\ref{dfn:semanticv}は論理式列について$\Psi$が複数の論理式を含むことを制限してはいるが，$\Phi, \Psi$の少なくともいずれかが空列になることを許している．
+                すなわち，次のような形式で表される意味論的含意も存在する．
+                ただし (\ref{eq:constancy}), (\ref{eq:paradox}) で$|\Phi| \ge 1$であり，$\Phi \equiv \varphi_1,\ldots, \varphi_n$とする．
+                \begin{align}
+                    &\vDash \psi \tag{\arabic{equation}--A} \label{eq:constancy}\\
+                    \Phi &\vDash \tag{\arabic{equation}--B} \label{eq:paradox}
+                \end{align}
+
+                (\ref{eq:constancy}) において，仮に$\semvalue{\psi}_I = 0$となるような解釈$I$があったとしよう．
+                このとき左辺が空列であるので，定義\ref{dfn:semanticv} (1) に合致する（そもそもないのだから，「全ての論理式」という条件を満たしている）．
+                よって$I$が (1), (2) を同時に満たすので意味論的に含意しないことになり (\ref{eq:constancy}) に矛盾する．
+                したがって任意の解釈$I$において$\semvalue{\psi}_I = 1$であるから，これは$\psi$が恒真式であることを表している．
+
+                同様に (\ref{eq:paradox}) についても，$\Phi$に含まれる全ての$\varphi_i$について$\semvalue{\varphi_i}_I = 1$を満たすような解釈$I$があるとすれば，右辺は空列であるので定義\ref{dfn:semanticv} (2) に合致し矛盾する．
+                すなわち$\Phi$を同時に充足するような解釈は存在しない．これは，各$\varphi_i$が矛盾していることを表している．
+
+                これらの結果を用いると，意味論的含意について次の定理が成り立つことが分かる．
+                \begin{thm} \label{thm:cantsatisfy}
+                    論理式列 $\Phi, \Psi$について，$|\Psi| \le 1$とすると
+                    \begin{equation}
+                        \Phi \vDash \Psi\ \Longleftrightarrow\ \lnot\Psi, \Phi\ が充足不能
+                    \end{equation}
+                \end{thm}
+
+                \begin{proof}
+                    $\Phi$と$\Psi$がそれぞれ空列のときは省略．$\Phi \equiv \varphi_1,\ldots, \varphi_n,\ \Psi \equiv \psi$とする．
+
+                    $\Phi \vDash \psi$ならば全ての$I$において，$\Phi$が同時に充足するなら$\psi$も充足する ($\semvalue{\psi}_I = 1$)．
+                    $\lnot\Psi \equiv \lnot \psi$であるが，$\semvalue{\lnot\psi}_I = I_C(\lnot)(\semvalue{\psi}_I) = 0$．すなわち$\Phi$が充足可能のとき$\lnot\Psi$は充足できない．
+
+                    逆に $\lnot\Psi, \Phi \equiv \lnot\psi, \Phi$が充足不能であるとき，全ての解釈$I$は次のいずれかを満たす．
+                    \begin{enumerate}
+                        \item ある$\varphi_i$が存在して，$\semvalue{\varphi_i}_I = 0$
+                        \item $\semvalue{\lnot\psi}_I = 0$，すなわち$\semvalue{\psi}_I = 1$
+                    \end{enumerate}
+                    (1) の場合には$\Phi$は同時に充足されないので定義\ref{dfn:semanticv}には関係ない．
+                    (2) の場合には $\Phi$が同時に充足され，かつ$\semvalue{\psi}_I = 0$とはならないので，定義\ref{dfn:semanticv}の要件を満たす解釈は存在しない．
+                    したがって$\Phi \vDash \Psi$．
+                \end{proof}
+            \subsubsection{意味論的同値}
+                次に示す3つの論理式は意味論における定理である（証明略）．
+                \begin{align}
+                    \varphi & \to  \lnot\lnot \varphi \tag{二重否定導入律} \\
+                    \lnot\lnot\varphi &\to \varphi \tag{二重否定除去律} \\
+                    \varphi &\lor \lnot\varphi \tag{排中律}
+                \end{align}
+                すなわちこれらはどのような論理式$\varphi$に対しても真となる，一階命題論理の恒真式である
+                \footnote{意味論での話．後に扱う証明論のうち単純なものの中には，これらが成り立たないものも存在する（体系SKなど）}．
+                二重否定導入律と除去律を合わせて二重否定律と呼び，次の通り書き換えられる．
+                \begin{equation}
+                    \varphi \leftrightarrow \lnot\lnot \varphi \tag{二重否定律}
+                \end{equation}
+                論理結合子$\leftrightarrow$の真理関数を考えれば，$\varphi$と$\lnot\lnot\varphi$は任意の解釈において意味論的値が等しいことが分かる．すなわち真偽が一致している．
+
+                ところで定義\ref{dfn:syntactical}では構文的同値性について定めたが，$\varphi$と$\lnot\lnot\varphi$は構文的には同値でない ($\varphi \not\equiv \lnot\lnot \varphi$)．
+                しかし常に真偽が一致するものを同じであると見なせないのは不便であるから，ここで次の通り意味論における同値関係について定義する．
+                \begin{dfn}
+                    論理式$\varphi, \psi$が$\varphi \vDash \psi$かつ$\psi \vDash \varphi$を満たすときに$\varphi$と$\psi$は\textbf{意味論的に同値である}といい，$\varphi = \psi$で表す．
+                \end{dfn}
+
+                等号$=$はさまざまな関係で用いられるので注意したい．上でいう$\varphi = \psi$の$=$と違い，$\semvalue{\varphi}_I = \semvalue{\psi}_I$の$=$は集合の要素の相当を表す．
+                この場合，意味論的値は領域$B=\qty{0,1}$の要素であるから，普段自然数や実数に用いる等号と同じである．
+
+                \begin{question}
+                    任意の論理式$\varphi, \psi$と解釈$I$について，次が成り立つことを確認せよ．
+                    \begin{equation*}
+                        \varphi = \psi \Longleftrightarrow \semvalue{\varphi}_I = \semvalue{\psi}_I
+                    \end{equation*}
+                \end{question}
+            
+            \subsubsection{意味論的含意と諸定理}
+                次に紹介する演繹定理やカット規則はこの直後に扱う推論と証明において非常に重要な役割を果たす．
+
+                \begin{thm}[演繹定理]
+                    任意の論理式列$\Phi$と論理式$\varphi, \psi$について次が成り立つ．
+                    \begin{equation}
+                        \Phi \vDash \varphi \to \psi\ \Longleftrightarrow\ \varphi, \Phi \vDash \psi
+                    \end{equation}
+                \end{thm}
+
+                \begin{proof} 必要条件と十分条件についてそれぞれ示す．
+                    \begin{description}
+                        \item[$\Rightarrow$ の証明 : ] 対偶を用いる．$\varphi, \Phi \not\vDash \psi$と仮定すると，定理\ref{thm:cantsatisfy}の否定より$\lnot\psi, \varphi, \Phi$を同時に充足する解釈が存在する．
+                            これを$I$とすると$\semvalue{\lnot\psi}_I = 1$より$\semvalue{\psi}_I = 0$，また$\semvalue{\varphi}_I = 1$である．このとき$\lnot(\varphi \to \psi)$の意味論的値は
+                            \begin{align*}
+                                \semvalue{\lnot(\varphi \to \psi)}_I &= I_C(\lnot)(I_C(\to)(\semvalue{\varphi}_I, \semvalue{\psi}_I)) \\
+                                    &= I_C(\lnot)(I_C(\to)(1, 0)) \\
+                                    &= I_C(\lnot)(0) \\
+                                    &= 1
+                            \end{align*}
+                            であるから，$I$は$\lnot(\varphi \to \psi), \Phi$を同時に充足する．よって$\varphi, \Phi \not\vDash \psi \Longrightarrow \Phi \not\vDash \varphi \to \psi$．
+                        \item[$\Leftarrow$ の証明 : ] $\varphi, \Phi \vDash \psi$と仮定すると，定理\ref{thm:cantsatisfy}より$\lnot\psi, \varphi, \Phi$は充足不能である．
+                            このとき，$\Phi$が充足可能ならば$\lnot(\varphi \to \psi)$が充足されないことを示せばよい．$\Phi$を同時に充足するような解釈を$I$とする．
+                            \begin{enumerate}
+                                \item $\semvalue{\varphi}_I = 0$の場合，$\psi$の真偽によらず$\semvalue{\varphi \to \psi}_I = 1$．
+                                \item $\semvalue{\varphi}_I = 1$の場合，$I$は$\varphi, \Phi$を同時に充足する．$\lnot\psi, \varphi, \Phi$は充足不能であったから，$\semvalue{\lnot\psi}_I = 0$．
+                                    したがって$\semvalue{\psi}_I = 1$であるから$\semvalue{\varphi \to \psi}_I = 1$．
+                            \end{enumerate}
+                            よって$\Phi$を充足する任意の$I$について$\semvalue{\lnot(\varphi \to \psi)}_I = 0$であるから，$\varphi, \Phi \vDash \psi \Longrightarrow \Phi \vDash \varphi \to \psi$．
+                    \end{description}
+                \end{proof}
+
+                この演繹定理より，次の系はただちに従う．
+                \begin{coro}
+                    任意の論理式$\varphi, \psi$について次が成り立つ．
+                    \begin{equation}
+                        \varphi \vDash \psi\ \Longleftrightarrow\ \vDash \varphi \to \psi
+                    \end{equation}
+                \end{coro}
+                \begin{coro}
+                    任意の論理式$\varphi_1, \ldots, \varphi_n, \psi$について次が成り立つ．
+                    \begin{equation}
+                        \varphi_1, \ldots, \varphi_n \vDash \psi\ \Longleftrightarrow\ \vDash \varphi_n \to \cdots \to \varphi_1 \to \psi
+                    \end{equation}
+                \end{coro}
+
+                \begin{thm}[カット規則]
+                    任意の論理式列$\Phi, X, \Psi$と論理式$\varphi, \psi$について次が成り立つ．
+                    \begin{equation}
+                        \Phi \vDash \varphi,\ X, \varphi, \Psi \vDash \psi\ \Longrightarrow\ X, \Phi, \Psi \vDash \psi
+                    \end{equation}
+                \end{thm}
+
+                \begin{proof}
+                    カット規則が成り立たないと仮定すると，以下の全てを同時に満たす論理式列$\Phi, X, \Psi$と論理式$\varphi, \psi$が存在する．
+                    \begin{enumerate}
+                        \item $\Phi \vDash \varphi$
+                        \item $X, \varphi, \Psi \vDash \psi$
+                        \item $X, \Phi, \Psi \not\vDash \psi$
+                    \end{enumerate}
+
+                    (3) と定理\ref{thm:cantsatisfy}よりある解釈$I$が存在して，$\lnot\psi, X, \Phi, \Psi$を同時に充足する．一方 (2) より$\psi, X, \varphi, \Psi$は充足不能だから，$I$は$\varphi$を充足しない．
+                    よって$\semvalue{\varphi}_I = 0$．
+
+                    一方 (1) より$\lnot\varphi, \Phi$は充足不能であるから$\semvalue{\lnot\varphi}_I = 0$，すなわち$\semvalue{\varphi}_I = 1$となって矛盾し，仮定は棄却される．
+                \end{proof}
+
+        \subsection{意味論における推論と証明}
+            ここまでの議論により，ようやく推論とその妥当性について定義する準備が整った．節\ref{inference}の式 (1) で述べた推論の定義を，ここで改めて行っておこう．
+            \begin{dfn}
+                論理式$\varphi_1, \ldots, \varphi_n, \psi$に対して，記号$\Rightarrow$を用いて次のように表される形式を推論と呼ぶ．
+                \begin{equation}
+                    \varphi_1, \ldots, \varphi_n\ \Longrightarrow\ \psi
+                \end{equation}
+                このとき$\varphi_1, \ldots, \varphi_n$を推論の前提，$\psi$を推論の結論という．
+            \end{dfn}
+
+            次に推論の妥当性を定義する．
+            \begin{dfn}\label{dfn:validinference}
+                推論$\varphi_1, \ldots, \varphi_n \Longrightarrow \psi$が意味論的に妥当であるとは，$\varphi_1, \ldots, \varphi_n \vDash \psi$であることに等しい．
+            \end{dfn}
+
+
+            つまりある推論が妥当であるとは，「前提が全て真なら結論も必ず真である」という話と同じになる．
+            ここに来て，前節で挙げた諸定理が威力を発揮することになる．意味論的含意についての分析がそのまま妥当な推論の分析に，ひいては妥当な証明の分析に繋がるからである．
+
+            特にカット規則は証明に必須と言ってもよい定理で，我々が普段行っている証明の中でも当然のように登場する．
+            例えば次に挙げるような「三段論法」は頻繁に使われるであろう．
+
+            \begin{enumerate}
+                \item $A \Longrightarrow B$
+                \item $B \Longrightarrow C$
+                \item (1), (2) より$A \Longrightarrow C$
+            \end{enumerate}
+
+            節\ref{inference}で確認した通り，証明が妥当であるためには次の条件を満たす必要があった．
+            \begin{itemize}
+                \item 妥当な推論のみから成り立っている
+                \item 推論同士が妥当に組み合わされている
+            \end{itemize}
+            これらを踏まえて，上の証明が本当に妥当であるか確かめる．
+
+            まず前提 (1), (2) が妥当な推論である必要がある．実際には$A$や$B$の内容から考えねばならないが，ここではとりあえず妥当であるとしなければ話が進まない．
+            すると定義\ref{dfn:validinference}より次が言える．
+            \begin{enumerate}[(1')]
+                \item $A \vDash B$
+                \item $B \vDash C$
+            \end{enumerate}
+
+            さらにカット規則を用いれば， (1'), (2') はカットによって「組み合わせ」ることができる．
+            \begin{equation*}
+                A \vDash B,\ B \vDash C\ \Longrightarrow\ A \vDash C
+            \end{equation*}
+
+            この右辺こそが (3) に他ならない．つまり「(1), (2) より」という部分は，カット規則の適用を指していたのである．
+            
+            \subsubsection{「噴水の証明」再考}
+                改めて，冒頭に示した問\ref{q:fountain}をどのように証明すればよいか考えよう．そのためにまずはいくつかの補題を用意する．
+
+                \begin{lem}\label{lem:first}
+                    論理式$\varphi, \psi$に対して，以下は一階命題論理の恒真式である（証明はじっと睨むか真理値表を用いる）．
+                    \begin{gather}
+                        \varphi \land \psi \to \varphi,\ \varphi \land \psi \to \psi \tag{縮小律} \\
+                        (\varphi \to \psi) \leftrightarrow (\lnot\varphi \to \lnot\psi) \tag{対偶律} \\
+                        \lnot \varphi \land (\varphi \lor \psi) \to \psi \tag{選言的三段論法}
+                    \end{gather}
+                \end{lem}
+                \begin{lem}\label{lem:second}
+                    任意の論理式列$\Phi$と論理式$\varphi, \psi$について以下が成り立つ．
+                    \begin{equation}
+                        \Phi \vDash \varphi,\ \Phi \vDash \psi\ \Longrightarrow \ \Phi \vDash \varphi \land \psi
+                    \end{equation}
+                \end{lem}
+                \begin{proof}
+                    $\Phi$を充足する任意の解釈$I$について，$\Phi \vDash \varphi$より$\semvalue{\varphi}_I = 1$．同様に$\Phi \vDash \psi$より$\semvalue{\psi}_I = 1$．
+                    よって$\semvalue{\varphi \land \psi}_I = 1$だから$\semvalue{\lnot(\varphi \land \psi)}_I = 0$．よって定義\ref{dfn:semanticv}より$\Phi \vDash \varphi \land \psi$．
+                \end{proof}
+
+                ここで原子命題「今日はオープンキャンパスの開催日である」を$P$，「今日は調布祭の開催日である」を$Q$，「今日は噴水が稼働している」を$R$，「今日は構内に高校生がいる」を$S$という
+                命題記号でそれぞれ表す．このとき問\ref{q:fountain}の前提 (1)-(3) は次のように書き換えられる．
+                \begin{enumerate}[(1')]
+                    \item $R = P \lor Q$
+                    \item $P \vDash S$
+                    \item $\vDash \lnot S \land R$
+                \end{enumerate}
+
+                残りの証明は読者の演習とする（上の (1')-(3') ，補題\ref{lem:first}, \ref{lem:second}および演繹定理とカット規則を用いればよい）．
+                \vspace{2ex}
+                \begin{shadebox}
+                \vspace{1ex}
+                \begin{question}
+                    以上の議論を踏まえて，問\ref{q:fountain}を証明せよ．
+
+                    物好きな読者は回答を次の連絡先に送っていただければ筆者が採点します．
+                    \begin{description}
+                        \item[Twitter (DM)] \url{@_jj1lis_uec}
+                        \item[e-mail] \url{katasuiron.jj1lis@gmail.com}
+                    \end{description}
+                \end{question}
+                \vspace{1ex}
+                \end{shadebox}
+                \vspace{2ex}
+
+    \section{参考文献}
+        \begin{enumerate}[1. ]
+            \item 鹿島亮． (2009) 『現代基礎数学15\quad  数理論理学』，朝倉書店．
+            \item 戸次大介． (2012) 『数理論理学』，東京大学出版会．
+        \end{enumerate}
+\end{document}
